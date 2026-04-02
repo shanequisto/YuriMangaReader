@@ -1,174 +1,138 @@
-‎<!DOCTYPE html>
-‎<html lang="en">
-‎<head>
-‎<meta charset="UTF-8">
-‎<meta name="viewport" content="width=device-width,initial-scale=1.0">
-‎<title>Yuri Manga Reader</title>
-‎<link rel="manifest" href="manifest.json">
-‎<style>
-‎body{margin:0;font-family:Arial;background:#111;color:white;overflow-x:hidden;}
-‎header{background:#ff4da6;padding:15px;text-align:center;font-size:22px;font-weight:bold;}
-‎.container{padding:10px;}
-‎.manga{background:#222;margin:10px 0;padding:10px;border-radius:10px;display:flex;align-items:center;}
-‎.manga img{width:80px;height:120px;border-radius:8px;margin-right:10px;object-fit:cover;}
-‎button{background:#ff4da6;border:none;padding:8px;color:white;border-radius:5px;margin:5px 0;width:100%;}
-‎img{width:100%;border-radius:10px;margin-bottom:10px;}
-‎.reader{display:flex;overflow-x: scroll;scroll-snap-type:x mandatory;}
-‎.reader img{flex:0 0 100%;scroll-snap-align:start;margin-bottom:0;border-radius:0;}
-‎.nav{display:flex;justify-content:space-around;background:#222;padding:10px;position:fixed;bottom:0;width:100%;}
-‎.nav button{flex:1;margin:2px;}
-‎input[type=text]{width:100%;padding:8px;border-radius:5px;border:none;margin-bottom:10px;}
-‎h2{margin-top:0;}
-‎</style>
-‎</head>
-‎<body>
-‎<header>Yuri Manga Reader 💖</header>
-‎<div class="container" id="app"></div>
-‎<div class="nav">
-‎    <button onclick="showHome()">Home</button>
-‎    <button onclick="showGenres()">Genres</button>
-‎    <button onclick="showFavorites()">Favorites</button>
-‎</div>
-‎
-‎<script>
-‎const BASE = "https://api.mangadex.org";
-‎let favorites = JSON.parse(localStorage.getItem("fav")) || [];
-‎let cachedChapters = {};
-‎
-‎async function showHome(){
-‎    let res = await fetch(`${BASE}/manga?limit=12&includes[]=cover_art&contentRating[]=safe&availableTranslatedLanguage[]=en`);
-‎    let data = await res.json();
-‎    let html = "<h2>Latest Yuri Manga</h2>";
-‎    for(let m of data.data){
-‎        let title = m.attributes.title.en || "No Title";
-‎        let isYuri = m.attributes.tags.some(t=>t.attributes.name.en && t.attributes.name.en.toLowerCase().includes("yuri"));
-‎        if(!isYuri) continue;
-‎        let cover = m.relationships.find(r=>r.type==="cover_art");
-‎        let coverUrl = cover ? `https://uploads.mangadex.org/covers/${m.id}/${cover.attributes.fileName}` : "https://via.placeholder.com/80x120";
-‎        html += `<div class="manga">
-‎                    <img src="${coverUrl}">
-‎                    <div>
-‎                        <h3>${title}</h3>
-‎                        <button onclick="openManga('${m.id}')">Read</button>
-‎                        <button onclick="addFav('${m.id}')">❤️ Favorite</button>
-‎                    </div>
-‎                 </div>`;
-‎    }
-‎    document.getElementById("app").innerHTML = html;
-‎}
-‎
-‎function showGenres(){
-‎    const genres = ["Yuri","Romance","School","Fantasy"];
-‎    let html = "<h2>Genres</h2>";
-‎    genres.forEach(g=>{
-‎        html += `<button onclick="filterGenre('${g}')">${g}</button>`;
-‎    });
-‎    html += `<input type="text" id="searchInput" placeholder="Search manga" onkeyup="searchManga()"/>`;
-‎    document.getElementById("app").innerHTML = html;
-‎}
-‎
-‎async function filterGenre(genre){
-‎    let res = await fetch(`${BASE}/manga?limit=20&includes[]=cover_art&availableTranslatedLanguage[]=en`);
-‎    let data = await res.json();
-‎    let html = `<h2>${genre}</h2>`;
-‎    for(let m of data.data){
-‎        let tags = m.attributes.tags.map(t=>t.attributes.name.en.toLowerCase());
-‎        if(!tags.includes(genre.toLowerCase())) continue;
-‎        let title = m.attributes.title.en || "No Title";
-‎        let cover = m.relationships.find(r=>r.type==="cover_art");
-‎        let coverUrl = cover ? `https://uploads.mangadex.org/covers/${m.id}/${cover.attributes.fileName}` : "https://via.placeholder.com/80x120";
-‎        html += `<div class="manga">
-‎                    <img src="${coverUrl}">
-‎                    <div>
-‎                        <h3>${title}</h3>
-‎                        <button onclick="openManga('${m.id}')">Read</button>
-‎                    </div>
-‎                 </div>`;
-‎    }
-‎    document.getElementById("app").innerHTML = html;
-‎}
-‎
-‎async function searchManga(){
-‎    let query = document.getElementById("searchInput").value.toLowerCase();
-‎    let res = await fetch(`${BASE}/manga?limit=20&includes[]=cover_art&availableTranslatedLanguage[]=en`);
-‎    let data = await res.json();
-‎    let html = `<h2>Search Results</h2>`;
-‎    for(let m of data.data){
-‎        let title = m.attributes.title.en || "No Title";
-‎        if(!title.toLowerCase().includes(query)) continue;
-‎        let tags = m.attributes.tags.map(t=>t.attributes.name.en.toLowerCase());
-‎        if(!tags.includes("yuri")) continue;
-‎        let cover = m.relationships.find(r=>r.type==="cover_art");
-‎        let coverUrl = cover ? `https://uploads.mangadex.org/covers/${m.id}/${cover.attributes.fileName}` : "https://via.placeholder.com/80x120";
-‎        html += `<div class="manga">
-‎                    <img src="${coverUrl}">
-‎                    <div>
-‎                        <h3>${title}</h3>
-‎                        <button onclick="openManga('${m.id}')">Read</button>
-‎                    </div>
-‎                 </div>`;
-‎    }
-‎    document.getElementById("app").innerHTML = html;
-‎}
-‎
-‎async function openManga(id){
-‎    let res = await fetch(`${BASE}/manga/${id}/aggregate?translatedLanguage[]=en`);
-‎    let data = await res.json();
-‎    let html = "<h2>Chapters</h2>";
-‎    for(let vol in data.volumes){
-‎        for(let chap in data.volumes[vol].chapters){
-‎            html += `<button onclick="readChapter('${id}','${vol}','${chap}')">Vol ${vol} Ch ${chap}</button>
-‎                     <button onclick="preloadChapter('${id}','${vol}','${chap}')">📥 Preload</button>`;
-‎        }
-‎    }
-‎    document.getElementById("app").innerHTML = html;
-‎}
-‎
-‎async function preloadChapter(mangaId, vol, chap){
-‎    let key = `${mangaId}-${vol}-${chap}`;
-‎    if(cachedChapters[key]){ alert("Already cached"); return; }
-‎    let res = await fetch(`${BASE}/manga/${mangaId}/aggregate?translatedLanguage[]=en`);
-‎    let data = await res.json();
-‎    let chapter = data.volumes[vol].chapters[chap];
-‎    if(!chapter){ alert("Not found"); return; }
-‎    let hash = chapter.data.attributes.hash;
-‎    let pages = chapter.data.attributes.data;
-‎    cachedChapters[key] = {hash,pages};
-‎    let c = await caches.open('yuri-offline');
-‎    for(let p of pages){ c.add(`https://uploads.mangadex.org/data/${hash}/${p}`); }
-‎    alert("Preloaded");
-‎}
-‎
-‎async function readChapter(mangaId, vol, chap){
-‎    let key = `${mangaId}-${vol}-${chap}`;
-‎    if(!cachedChapters[key]) await preloadChapter(mangaId,vol,chap);
-‎    let {hash,pages} = cachedChapters[key];
-‎    let html = `<div class="reader">`;
-‎    pages.forEach(p=>{ html += `<img src="https://uploads.mangadex.org/data/${hash}/${p}">`; });
-‎    html += `</div>`;
-‎    document.getElementById("app").innerHTML = html;
-‎}
-‎
-‎function addFav(id){
-‎    if(!favorites.includes(id)) favorites.push(id);
-‎    localStorage.setItem("fav",JSON.stringify(favorites));
-‎    alert("Favorited!");
-‎}
-‎
-‎async function showFavorites(){
-‎    let html = "<h2>Favorites</h2>";
-‎    for(let id of favorites){
-‎        let r = await fetch(`${BASE}/manga/${id}`);
-‎        let m = await r.json();
-‎        let t = m.data.attributes.title.en || "No Title";
-‎        html += `<div class="manga"><h3>${t}</h3></div>`;
-‎    }
-‎    document.getElementById("app").innerHTML = html;
-‎}
-‎
-‎if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
-‎showHome();
-‎</script>
-‎</body>
-‎</html>
-‎
+‎‎
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Yuri Manga Reader 💖</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body{margin:0;font-family: 'Segoe UI', sans-serif;background:#111;color:white;overflow-x:hidden;padding-bottom: 70px;}
+        header{background:#ff4da6;padding:15px;text-align:center;font-size:22px;font-weight:bold;position: sticky;top:0;z-index:100;}
+        .container{padding:10px;}
+        .manga{background:#222;margin:10px 0;padding:10px;border-radius:10px;display:flex;align-items:center;border: 1px solid #333;}
+        .manga img{width:80px;height:120px;border-radius:8px;margin-right:15px;object-fit:cover;}
+        .manga h3 {font-size: 16px; margin: 0 0 10px 0; color: #ffb3d9;}
+        button{background:#ff4da6;border:none;padding:10px;color:white;border-radius:5px;margin:5px 0;width:100%;font-weight:bold;cursor:pointer;}
+        .reader img{width:100%;display:block;margin-bottom:5px;}
+        .nav{display:flex;justify-content:space-around;background:#222;padding:10px;position:fixed;bottom:0;width:100%;border-top: 2px solid #ff4da6;}
+        .nav button{flex:1;margin:2px; background: transparent; border: 1px solid #ff4da6; font-size: 12px; color: white; border-radius: 5px;}
+        input[type=text]{width:90%;padding:10px;border-radius:5px;border:none;margin-bottom:15px;background: #333; color: white;}
+        .loading {text-align: center; padding: 20px; color: #ff4da6;}
+    </style>
+</head>
+<body>
+
+<header>🌸 YuriMangaReader 🌸</header>
+<div class="container" id="app"></div>
+
+<div class="nav">
+    <button onclick="showHome()">🏠 Home</button>
+    <button onclick="showSearch()">🔍 Search</button>
+    <button onclick="showFavorites()">❤️ Favs</button>
+</div>
+
+<script>
+const BASE = "https://api.mangadex.org";
+const IMAGE_SERVER = "https://uploads.mangadex.org";
+
+// 1. HOME SCREEN
+async function showHome(){
+    const app = document.getElementById("app");
+    app.innerHTML = '<div class="loading">Loading Yuri Manga... Please wait.</div>';
+    
+    try {
+        let res = await fetch(`${BASE}/manga?limit=10&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive&includedTags[]=a3c4404d-2105-477b-b9e4-4e171f7d73b4&availableTranslatedLanguage[]=en`);
+        let data = await res.json();
+        
+        let html = "<h2>Featured Yuri 📖</h2>";
+        
+        // SPECIAL: MURMUR MANGA
+        html += `<div class="manga" style="border: 2px solid #ff4da6;">
+                    <img src="https://dw9to29btj727.cloudfront.net/products/1975301416.jpg">
+                    <div>
+                        <h3>Murmur (Special)</h3>
+                        <button onclick="window.open('https://www.mangago.me/read-manga/murmur/', '_blank')">Read on MangaGo 🚀</button>
+                    </div>
+                 </div>`;
+
+        for(let m of data.data){
+            let title = m.attributes.title.en || "No Title";
+            let cover = m.relationships.find(r=>r.type==="cover_art");
+            let coverUrl = cover ? `${IMAGE_SERVER}/covers/${m.id}/${cover.attributes.fileName}` : "https://via.placeholder.com/80x120";
+            
+            html += `<div class="manga">
+                        <img src="${coverUrl}">
+                        <div>
+                            <h3>${title}</h3>
+                            <button onclick="openManga('${m.id}')">View Chapters</button>
+                        </div>
+                     </div>`;
+        }
+        app.innerHTML = html;
+    } catch (e) {
+        app.innerHTML = "Error loading. Check your internet.";
+    }
+}
+
+// 2. VIEW CHAPTERS
+async function openManga(id){
+    document.getElementById("app").innerHTML = '<div class="loading">Fetching Chapters...</div>';
+    let res = await fetch(`${BASE}/manga/${id}/feed?translatedLanguage[]=en&order[chapter]=asc&limit=50`);
+    let data = await res.json();
+    
+    let html = `<button onclick="showHome()">← Back</button><h2>Chapters</h2>`;
+    data.data.forEach(ch => {
+        let cNum = ch.attributes.chapter;
+        html += `<button onclick="readChapter('${ch.id}')">Chapter ${cNum}</button>`;
+    });
+    document.getElementById("app").innerHTML = html;
+}
+
+// 3. READ CHAPTER (IMAGE FIX)
+async function readChapter(chapterId){
+    document.getElementById("app").innerHTML = '<div class="loading">Loading Pages...</div>';
+    let res = await fetch(`${BASE}/at-home/server/${chapterId}`);
+    let data = await res.json();
+    
+    let hash = data.chapter.hash;
+    let files = data.chapter.data;
+    let baseUrl = data.baseUrl;
+
+    let html = `<button onclick="showHome()">← Close Reader</button><div class="reader">`;
+    files.forEach(file => {
+        html += `<img src="${baseUrl}/data/${hash}/${file}" loading="lazy">`;
+    });
+    html += `</div>`;
+    document.getElementById("app").innerHTML = html;
+    window.scrollTo(0,0);
+}
+
+function showSearch(){
+    document.getElementById("app").innerHTML = `
+        <h2>Search</h2>
+        <input type="text" id="searchInput" placeholder="Search Yuri titles...">
+        <button onclick="searchManga()">Search</button>
+    `;
+}
+
+async function searchManga(){
+    let q = document.getElementById("searchInput").value;
+    document.getElementById("app").innerHTML = '<div class="loading">Searching...</div>';
+    let res = await fetch(`${BASE}/manga?title=${q}&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive`);
+    let data = await res.json();
+    let html = "<h2>Results</h2>";
+    data.data.forEach(m => {
+        let title = m.attributes.title.en || "No Title";
+        html += `<div class="manga"><h3>${title}</h3><button onclick="openManga('${m.id}')">Read</button></div>`;
+    });
+    document.getElementById("app").innerHTML = html;
+}
+
+function showFavorites() { document.getElementById("app").innerHTML = "<h2>Favs Coming Soon!</h2>"; }
+
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
+showHome();
+</script>
+</body>
+</html>
