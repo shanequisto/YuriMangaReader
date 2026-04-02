@@ -1,4 +1,4 @@
-‎‎
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,18 +7,22 @@
     <title>Yuri Manga Reader 💖</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body{margin:0;font-family: 'Segoe UI', sans-serif;background:#111;color:white;overflow-x:hidden;padding-bottom: 70px;}
-        header{background:#ff4da6;padding:15px;text-align:center;font-size:22px;font-weight:bold;position: sticky;top:0;z-index:100;}
+        body{margin:0;font-family: 'Segoe UI', sans-serif;background:#111;color:white;overflow-x:hidden;padding-bottom: 80px;}
+        header{background:#ff4da6;padding:15px;text-align:center;font-size:22px;font-weight:bold;position: sticky;top:0;z-index:100;box-shadow: 0 2px 10px rgba(0,0,0,0.5);}
         .container{padding:10px;}
-        .manga{background:#222;margin:10px 0;padding:10px;border-radius:10px;display:flex;align-items:center;border: 1px solid #333;}
-        .manga img{width:80px;height:120px;border-radius:8px;margin-right:15px;object-fit:cover;}
-        .manga h3 {font-size: 16px; margin: 0 0 10px 0; color: #ffb3d9;}
-        button{background:#ff4da6;border:none;padding:10px;color:white;border-radius:5px;margin:5px 0;width:100%;font-weight:bold;cursor:pointer;}
-        .reader img{width:100%;display:block;margin-bottom:5px;}
-        .nav{display:flex;justify-content:space-around;background:#222;padding:10px;position:fixed;bottom:0;width:100%;border-top: 2px solid #ff4da6;}
-        .nav button{flex:1;margin:2px; background: transparent; border: 1px solid #ff4da6; font-size: 12px; color: white; border-radius: 5px;}
-        input[type=text]{width:90%;padding:10px;border-radius:5px;border:none;margin-bottom:15px;background: #333; color: white;}
-        .loading {text-align: center; padding: 20px; color: #ff4da6;}
+        .manga{background:#222;margin:12px 0;padding:12px;border-radius:12px;display:flex;align-items:center;border: 1px solid #333; transition: 0.3s;}
+        .manga img{width:90px;height:130px;border-radius:8px;margin-right:15px;object-fit:cover; background: #333;}
+        .manga-info {flex-grow: 1;}
+        .manga h3 {font-size: 16px; margin: 0 0 8px 0; color: #ffb3d9; line-height: 1.2;}
+        button{background:#ff4da6;border:none;padding:10px;color:white;border-radius:8px;width:100%;font-weight:bold;cursor:pointer; font-size: 14px;}
+        button:active{background:#d63384; transform: scale(0.98);}
+        .reader img{width:100%;display:block;margin-bottom:5px; background: #222;}
+        .nav{display:flex;justify-content:space-around;background:#1a1a1a;padding:10px;position:fixed;bottom:0;width:100%;border-top: 2px solid #ff4da6; z-index: 100;}
+        .nav button{flex:1;margin:0 5px; background: transparent; border: 1px solid #ff4da6; font-size: 12px; color: white;}
+        input[type=text]{width:92%;padding:12px;border-radius:8px;border:none;margin-bottom:15px;background: #333; color: white; font-size: 16px;}
+        .loading {text-align: center; padding: 40px; color: #ff4da6; font-weight: bold;}
+        .error-msg {text-align: center; padding: 20px; color: #ff9999; font-size: 14px;}
+        h2 {border-left: 4px solid #ff4da6; padding-left: 10px; margin-left: 5px; font-size: 20px;}
     </style>
 </head>
 <body>
@@ -35,101 +39,126 @@
 <script>
 const BASE = "https://api.mangadex.org";
 const IMAGE_SERVER = "https://uploads.mangadex.org";
+const PROXY = "https://api.allorigins.win/raw?url=";
 
-// 1. HOME SCREEN
+// 1. HOME SCREEN (WITH PROXY FIX)
 async function showHome(){
     const app = document.getElementById("app");
-    app.innerHTML = '<div class="loading">Loading Yuri Manga... Please wait.</div>';
+    app.innerHTML = '<div class="loading">Fetching Yuri Manga...</div>';
     
     try {
-        let res = await fetch(`${BASE}/manga?limit=10&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive&includedTags[]=a3c4404d-2105-477b-b9e4-4e171f7d73b4&availableTranslatedLanguage[]=en`);
+        const apiUrl = `${BASE}/manga?limit=15&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive&includedTags[]=a3c4404d-2105-477b-b9e4-4e171f7d73b4&availableTranslatedLanguage[]=en`;
+        let res = await fetch(PROXY + encodeURIComponent(apiUrl));
         let data = await res.json();
         
-        let html = "<h2>Featured Yuri 📖</h2>";
+        let html = "<h2>Top Picks 📖</h2>";
         
-        // SPECIAL: MURMUR MANGA
-        html += `<div class="manga" style="border: 2px solid #ff4da6;">
+        // SPECIAL: MURMUR MANGA (DIRECT LINK)
+        html += `<div class="manga" style="border: 2px solid #ff4da6; background: #2d1b24;">
                     <img src="https://dw9to29btj727.cloudfront.net/products/1975301416.jpg">
-                    <div>
-                        <h3>Murmur (Special)</h3>
-                        <button onclick="window.open('https://www.mangago.me/read-manga/murmur/', '_blank')">Read on MangaGo 🚀</button>
+                    <div class="manga-info">
+                        <h3>Murmur (Special Choice)</h3>
+                        <button onclick="window.open('https://www.mangago.me/read-manga/murmur/', '_blank')">READ ON MANGAGO 🚀</button>
                     </div>
                  </div>`;
 
         for(let m of data.data){
-            let title = m.attributes.title.en || "No Title";
+            let title = m.attributes.title.en || m.attributes.title.ja || "Untitled Yuri";
             let cover = m.relationships.find(r=>r.type==="cover_art");
-            let coverUrl = cover ? `${IMAGE_SERVER}/covers/${m.id}/${cover.attributes.fileName}` : "https://via.placeholder.com/80x120";
+            let coverUrl = cover ? `${IMAGE_SERVER}/covers/${m.id}/${cover.attributes.fileName}.256.jpg` : "https://via.placeholder.com/90x130";
             
             html += `<div class="manga">
                         <img src="${coverUrl}">
-                        <div>
+                        <div class="manga-info">
                             <h3>${title}</h3>
-                            <button onclick="openManga('${m.id}')">View Chapters</button>
+                            <button onclick="openManga('${m.id}')">VIEW CHAPTERS</button>
                         </div>
                      </div>`;
         }
         app.innerHTML = html;
     } catch (e) {
-        app.innerHTML = "Error loading. Check your internet.";
+        app.innerHTML = "<div class='error-msg'>Connection error. Try refreshing the page!</div>";
     }
 }
 
 // 2. VIEW CHAPTERS
 async function openManga(id){
-    document.getElementById("app").innerHTML = '<div class="loading">Fetching Chapters...</div>';
-    let res = await fetch(`${BASE}/manga/${id}/feed?translatedLanguage[]=en&order[chapter]=asc&limit=50`);
-    let data = await res.json();
-    
-    let html = `<button onclick="showHome()">← Back</button><h2>Chapters</h2>`;
-    data.data.forEach(ch => {
-        let cNum = ch.attributes.chapter;
-        html += `<button onclick="readChapter('${ch.id}')">Chapter ${cNum}</button>`;
-    });
-    document.getElementById("app").innerHTML = html;
+    document.getElementById("app").innerHTML = '<div class="loading">Loading Chapters...</div>';
+    try {
+        const apiUrl = `${BASE}/manga/${id}/feed?translatedLanguage[]=en&order[chapter]=asc&limit=100`;
+        let res = await fetch(PROXY + encodeURIComponent(apiUrl));
+        let data = await res.json();
+        
+        let html = `<button onclick="showHome()">← BACK TO HOME</button><h2>Chapters</h2>`;
+        if(data.data.length === 0) html += "<p class='error-msg'>No English chapters found.</p>";
+        
+        data.data.forEach(ch => {
+            let cNum = ch.attributes.chapter || "???";
+            let cTitle = ch.attributes.title ? `- ${ch.attributes.title}` : "";
+            html += `<button style="margin-bottom:5px; background:#333; border: 1px solid #444;" onclick="readChapter('${ch.id}')">Chapter ${cNum} ${cTitle}</button>`;
+        });
+        document.getElementById("app").innerHTML = html;
+        window.scrollTo(0,0);
+    } catch(e) {
+        document.getElementById("app").innerHTML = "<div class='error-msg'>Failed to load chapters.</div>";
+    }
 }
 
-// 3. READ CHAPTER (IMAGE FIX)
+// 3. READ CHAPTER (THE REAL FIX)
 async function readChapter(chapterId){
     document.getElementById("app").innerHTML = '<div class="loading">Loading Pages...</div>';
-    let res = await fetch(`${BASE}/at-home/server/${chapterId}`);
-    let data = await res.json();
-    
-    let hash = data.chapter.hash;
-    let files = data.chapter.data;
-    let baseUrl = data.baseUrl;
+    try {
+        const apiUrl = `${BASE}/at-home/server/${chapterId}`;
+        let res = await fetch(PROXY + encodeURIComponent(apiUrl));
+        let data = await res.json();
+        
+        let hash = data.chapter.hash;
+        let files = data.chapter.data;
+        let baseUrl = data.baseUrl;
 
-    let html = `<button onclick="showHome()">← Close Reader</button><div class="reader">`;
-    files.forEach(file => {
-        html += `<img src="${baseUrl}/data/${hash}/${file}" loading="lazy">`;
-    });
-    html += `</div>`;
-    document.getElementById("app").innerHTML = html;
-    window.scrollTo(0,0);
+        let html = `<button onclick="showHome()" style="position:sticky; top:60px; z-index:100; background:#000;">← CLOSE READER</button><div class="reader">`;
+        files.forEach(file => {
+            html += `<img src="${baseUrl}/data/${hash}/${file}" loading="lazy" onerror="this.src='https://via.placeholder.com/300x500?text=Page+Error'">`;
+        });
+        html += `</div><button onclick="window.scrollTo(0,0)">BACK TO TOP</button>`;
+        
+        document.getElementById("app").innerHTML = html;
+        window.scrollTo(0,0);
+    } catch(e) {
+        document.getElementById("app").innerHTML = "<div class='error-msg'>Failed to load images. Try again.</div>";
+    }
 }
 
 function showSearch(){
     document.getElementById("app").innerHTML = `
-        <h2>Search</h2>
-        <input type="text" id="searchInput" placeholder="Search Yuri titles...">
-        <button onclick="searchManga()">Search</button>
+        <h2>Search Yuri</h2>
+        <input type="text" id="searchInput" placeholder="Type title then Enter..." onkeyup="if(event.key==='Enter') searchManga()">
+        <button onclick="searchManga()">SEARCH NOW</button>
     `;
 }
 
 async function searchManga(){
     let q = document.getElementById("searchInput").value;
+    if(!q) return;
     document.getElementById("app").innerHTML = '<div class="loading">Searching...</div>';
-    let res = await fetch(`${BASE}/manga?title=${q}&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive`);
-    let data = await res.json();
-    let html = "<h2>Results</h2>";
-    data.data.forEach(m => {
-        let title = m.attributes.title.en || "No Title";
-        html += `<div class="manga"><h3>${title}</h3><button onclick="openManga('${m.id}')">Read</button></div>`;
-    });
-    document.getElementById("app").innerHTML = html;
+    try {
+        const apiUrl = `${BASE}/manga?title=${q}&includes[]=cover_art&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica&limit=20`;
+        let res = await fetch(PROXY + encodeURIComponent(apiUrl));
+        let data = await res.json();
+        let html = `<h2>Results for "${q}"</h2>`;
+        data.data.forEach(m => {
+            let title = m.attributes.title.en || "Untitled";
+            let cover = m.relationships.find(r=>r.type==="cover_art");
+            let coverUrl = cover ? `${IMAGE_SERVER}/covers/${m.id}/${cover.attributes.fileName}.256.jpg` : "https://via.placeholder.com/90x130";
+            html += `<div class="manga"><img src="${coverUrl}"><div class="manga-info"><h3>${title}</h3><button onclick="openManga('${m.id}')">READ</button></div></div>`;
+        });
+        document.getElementById("app").innerHTML = html || "<p class='error-msg'>No manga found.</p>";
+    } catch(e) {
+        document.getElementById("app").innerHTML = "<div class='error-msg'>Search failed. Check connection.</div>";
+    }
 }
 
-function showFavorites() { document.getElementById("app").innerHTML = "<h2>Favs Coming Soon!</h2>"; }
+function showFavorites() { document.getElementById("app").innerHTML = "<h2>Favorites ❤️</h2><p style='text-align:center;'>This feature is in development. Check back soon!</p>"; }
 
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
 showHome();
